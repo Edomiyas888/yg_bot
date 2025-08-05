@@ -1,9 +1,27 @@
 const TelegramBot = require('node-telegram-bot-api');
 require('dotenv').config({ path: './config.env' });
 
-// Bot configuration
+// Bot configuration with validation
 const token = process.env.BOT_TOKEN;
 const gameUrl = process.env.GAME_URL;
+
+// Validate bot token
+if (!token || token === 'your_telegram_bot_token_here') {
+    console.error('❌ Error: Bot token not found or invalid!');
+    console.error('Please check your config.env file and ensure BOT_TOKEN is set correctly.');
+    console.error('Current token value:', token);
+    process.exit(1);
+}
+
+// Validate game URL
+if (!gameUrl || gameUrl === 'https://your-domain.com/webhook') {
+    console.warn('⚠️  Warning: Game URL not configured properly');
+    console.warn('Please update GAME_URL in config.env file');
+}
+
+console.log('✅ Bot token loaded successfully');
+console.log('✅ Game URL:', gameUrl);
+
 const bot = new TelegramBot(token, { polling: true });
 
 // Store user data (in production, use a database)
