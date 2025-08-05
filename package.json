@@ -4,8 +4,10 @@
   "description": "Telegram bot for Genius Bingo gaming platform",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node bot-deploy.js",
+    "dev": "nodemon bot.js",
+    "deploy": "node bot-deploy.js",
+    "local": "node bot.js",
     "test": "node test-config.js",
     "test-config": "node test-config.js"
   },

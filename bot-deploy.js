@@ -1,50 +1,16 @@
 const TelegramBot = require('node-telegram-bot-api');
 
-// Load environment variables - try config file first, then use process.env directly
-let configLoaded = false;
-try {
-    require('dotenv').config({ path: './config.env' });
-    configLoaded = true;
-    console.log('📁 Loaded configuration from config.env file');
-} catch (error) {
-    console.log('📁 Using environment variables (deployment mode)');
-}
-
-// Bot configuration with validation
+// For deployment, use environment variables directly
+// No need for dotenv in production environments
 const token = process.env.BOT_TOKEN;
 const gameUrl = process.env.GAME_URL || 'https://GeniusBingoBot.netlify.app';
 
-// Debug information
-console.log('🔍 Debug Information:');
-console.log('Config file loaded:', configLoaded);
-console.log('Token exists:', !!token);
-console.log('Token value:', token ? token.substring(0, 10) + '...' + token.substring(token.length - 4) : 'undefined');
-console.log('Game URL:', gameUrl);
-console.log('All env vars with BOT:', Object.keys(process.env).filter(key => key.includes('BOT')));
-
 // Validate bot token
-if (!token || token === 'your_telegram_bot_token_here') {
-    console.error('❌ Error: Bot token not found or invalid!');
-    console.error('Please check your config.env file and ensure BOT_TOKEN is set correctly.');
-    console.error('Current token value:', token);
+if (!token) {
+    console.error('❌ Error: BOT_TOKEN environment variable is not set!');
+    console.error('Please set the BOT_TOKEN environment variable in your deployment platform.');
     console.error('Available environment variables:', Object.keys(process.env).filter(key => key.includes('BOT')));
-
-    // For deployment, provide specific instructions
-    if (!configLoaded) {
-        console.error('\n🚀 DEPLOYMENT SETUP:');
-        console.error('Please set the following environment variables in your deployment platform:');
-        console.error('BOT_TOKEN=8318709913:AAHXq3iMDq3gIZ4ymK_qD743VvQ09Rpt-II');
-        console.error('GAME_URL=https://GeniusBingoBot.netlify.app');
-        console.error('BOT_USERNAME=GeniusBingoBot');
-    }
-
     process.exit(1);
-}
-
-// Validate game URL
-if (!gameUrl || gameUrl === 'https://your-domain.com/webhook') {
-    console.warn('⚠️  Warning: Game URL not configured properly');
-    console.warn('Please update GAME_URL in config.env file');
 }
 
 console.log('✅ Bot token loaded successfully');
