@@ -135,7 +135,7 @@ bot.onText(/\/start/, async (msg) => {
 
     if (!isRegistered) {
         const welcomeMessage = `
-🎰 Welcome to Genius Bingo Bot, ${userName}! 🏆
+🎰 Welcome to Genius Bingo Bot t, ${userName}! 🏆
 
 I'm here to help you with your bingo gaming experience.
 
@@ -246,15 +246,20 @@ You can now start playing!
     }
 });
 
-bot.onText(/\/web/, (msg) => {
+bot.onText(/\/web/, async (msg) => {
     const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    // Get user data from Firebase
+    const userData = await getUserData(userId);
+    const uid = userData?.uid || '';
 
     const webMessage = `
 🌐 Play Genius Bingo on Web
 
 Click the button below to play on our web platform:
 
-${gameUrl}
+${gameUrl}?uid=${uid}
 
 Features on web:
 • Full-screen gaming experience
@@ -269,7 +274,7 @@ Features on web:
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🌐 Open Web Game', url: gameUrl }
+                    { text: '🌐 Open Web Game', url: `${gameUrl}?uid=${uid}` }
                 ],
                 [
                     { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -313,8 +318,13 @@ Need more help? Contact support.
     bot.sendMessage(chatId, helpMessage, { parse_mode: 'HTML' });
 });
 
-bot.onText(/\/play/, (msg) => {
+bot.onText(/\/play/, async (msg) => {
     const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    // Get user data from Firebase
+    const userData = await getUserData(userId);
+    const uid = userData?.uid || '';
 
     const playMessage = `
 🎮 Choose Your Platform:
@@ -328,7 +338,7 @@ Where would you like to play?
             inline_keyboard: [
                 [
                     { text: '📱 Play on Telegram', callback_data: 'play_telegram' },
-                    { text: '🌐 Play on Web', url: gameUrl }
+                    { text: '🌐 Play on Web', url: `${gameUrl}?uid=${uid}` }
                 ],
                 [
                     { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -338,12 +348,14 @@ Where would you like to play?
     });
 });
 
-bot.onText(/\/balance/, (msg) => {
+bot.onText(/\/balance/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
 
-    // Get user balance (in production, fetch from database)
-    const balance = userData.get(userId)?.balance || 0;
+    // Get user data from Firebase
+    const userData = await getUserData(userId);
+    const balance = userData?.wallet || 0;
+    const uid = userData?.uid || '';
 
     const balanceMessage = `
 💰 Your Balance: ${balance} Birr
@@ -351,7 +363,7 @@ bot.onText(/\/balance/, (msg) => {
 Recent transactions:
 • No recent activity
 
-🌐 Check detailed balance on web: ${gameUrl}
+🌐 Check detailed balance on web: ${gameUrl}?uid=${uid}
   `;
 
     bot.sendMessage(chatId, balanceMessage, {
@@ -359,7 +371,7 @@ Recent transactions:
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🌐 View on Web', url: gameUrl }
+                    { text: '🌐 View on Web', url: `${gameUrl}?uid=${uid}` }
                 ],
                 [
                     { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
