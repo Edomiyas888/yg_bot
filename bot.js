@@ -1,4 +1,29 @@
 const TelegramBot = require('node-telegram-bot-api');
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin SDK
+const serviceAccount = {
+    "type": "service_account",
+    "project_id": "geno-5e7f5",
+    "private_key_id": process.env.FIREBASE_PRIVATE_KEY_ID,
+    "private_key": process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+    "client_email": process.env.FIREBASE_CLIENT_EMAIL,
+    "client_id": process.env.FIREBASE_CLIENT_ID,
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": process.env.FIREBASE_CLIENT_CERT_URL
+};
+
+// Initialize Firebase Admin
+if (!admin.apps.length) {
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: "https://geno-5e7f5-default-rtdb.firebaseio.com"
+    });
+}
+
+const db = admin.firestore();
 
 // Load environment variables - try config file first, then use process.env directly
 let configLoaded = false;
@@ -55,15 +80,85 @@ const bot = new TelegramBot(token, { polling: true });
 // Store user data (in production, use a database)
 const userData = new Map();
 
+// Function to check if user is registered
+async function isUserRegistered(userId) {
+    try {
+        const userDoc = await db.collection('users').where('telegramId', '==', userId.toString()).get();
+        return !userDoc.empty;
+    } catch (error) {
+        console.error('Error checking user registration:', error);
+        return false;
+    }
+}
+
+// Function to get user data from Firebase
+async function getUserData(userId) {
+    try {
+        const userDoc = await db.collection('users').where('telegramId', '==', userId.toString()).get();
+        if (!userDoc.empty) {
+            return userDoc.docs[0].data();
+        }
+        return null;
+    } catch (error) {
+        console.error('Error getting user data:', error);
+        return null;
+    }
+}
+
+// Function to create user in Firebase
+async function createUser(userId, userName, phone) {
+    try {
+        const userRef = await db.collection('users').add({
+            telegramId: userId.toString(),
+            userName: userName,
+            phone: phone,
+            wallet: 10, // Default 10 birr
+            isAdult: true,
+            agreeTerms: true,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        return userRef.id;
+    } catch (error) {
+        console.error('Error creating user:', error);
+        throw error;
+    }
+}
+
 // Bot commands
-bot.onText(/\/start/, (msg) => {
+bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
+    const userId = msg.from.id;
     const userName = msg.from.first_name;
 
-    const welcomeMessage = `
+    // Check if user is registered
+    const isRegistered = await isUserRegistered(userId);
+
+    if (!isRegistered) {
+        const welcomeMessage = `
 🎰 Welcome to Genius Bingo Bot, ${userName}! 🏆
 
 I'm here to help you with your bingo gaming experience.
+
+To get started, please register with your phone number to receive 10 Birr bonus!
+  `;
+
+        bot.sendMessage(chatId, welcomeMessage, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                keyboard: [
+                    [{ text: '📱 Register with Phone', request_contact: true }]
+                ],
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        });
+    } else {
+        // User is already registered
+        const userData = await getUserData(userId);
+        const welcomeMessage = `
+🎰 Welcome back to Genius Bingo Bot, ${userName}! 🏆
+
+Your balance: ${userData?.wallet || 0} Birr
 
 Available commands:
 /start - Show this welcome message
@@ -79,28 +174,76 @@ Available commands:
 How can I help you today?
   `;
 
-    bot.sendMessage(chatId, welcomeMessage, {
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: '🎮 Play Now', callback_data: 'play' },
-                    { text: '💰 Balance', callback_data: 'balance' }
-                ],
-                [
-                    { text: '📊 Leaderboard', callback_data: 'leaderboard' },
-                    { text: '👤 Profile', callback_data: 'profile' }
-                ],
-                [
-                    { text: '💳 Deposit', callback_data: 'deposit' },
-                    { text: '💸 Withdraw', callback_data: 'withdraw' }
-                ],
-                [
-                    { text: '🌐 Play on Web', url: gameUrl }
+        bot.sendMessage(chatId, welcomeMessage, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '🎮 Play Now', callback_data: 'play' },
+                        { text: '💰 Balance', callback_data: 'balance' }
+                    ],
+                    [
+                        { text: '📊 Leaderboard', callback_data: 'leaderboard' },
+                        { text: '👤 Profile', callback_data: 'profile' }
+                    ],
+                    [
+                        { text: '💳 Deposit', callback_data: 'deposit' },
+                        { text: '💸 Withdraw', callback_data: 'withdraw' }
+                    ],
+                    [
+                        { text: '🌐 Play on Web', url: `${gameUrl}?uid=${userData?.uid || ''}` }
+                    ]
                 ]
-            ]
+            }
+        });
+    }
+});
+
+// Handle contact sharing for registration
+bot.on('contact', async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const userName = msg.from.first_name;
+    const contact = msg.contact;
+
+    // Check if this is the user's own contact
+    if (contact.user_id === userId) {
+        try {
+            // Create user in Firebase
+            const uid = await createUser(userId, userName, contact.phone_number);
+
+            const successMessage = `
+✅ Registration Successful!
+
+Welcome to Genius Bingo, ${userName}!
+Your account has been created with 10 Birr bonus.
+
+Your UID: ${uid}
+
+You can now start playing!
+  `;
+
+            bot.sendMessage(chatId, successMessage, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '🎮 Play Now', callback_data: 'play' },
+                            { text: '💰 Check Balance', callback_data: 'balance' }
+                        ],
+                        [
+                            { text: '🌐 Play on Web', url: `${gameUrl}?uid=${uid}` }
+                        ]
+                    ]
+                }
+            });
+        } catch (error) {
+            console.error('Registration error:', error);
+            bot.sendMessage(chatId, '❌ Registration failed. Please try again later.');
         }
-    });
+    } else {
+        bot.sendMessage(chatId, '❌ Please share your own phone number for registration.');
+    }
 });
 
 bot.onText(/\/web/, (msg) => {
@@ -232,6 +375,10 @@ bot.on('callback_query', async (query) => {
     const userId = query.from.id;
     const data = query.data;
 
+    // Get user data from Firebase
+    const userData = await getUserData(userId);
+    const uid = userData?.uid || '';
+
     switch (data) {
         case 'play':
             const playMessage = `
@@ -248,7 +395,7 @@ Where would you like to play?
                     inline_keyboard: [
                         [
                             { text: '📱 Play on Telegram', callback_data: 'play_telegram' },
-                            { text: '🌐 Play on Web', url: gameUrl }
+                            { text: '🌐 Play on Web', url: `${gameUrl}?uid=${uid}` }
                         ],
                         [
                             { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -288,14 +435,14 @@ Select how much you want to bet:
             break;
 
         case 'balance':
-            const balance = userData.get(userId)?.balance || 0;
+            const balance = userData?.wallet || 0;
             const balanceMessage = `
 💰 Your Balance: ${balance} Birr
 
 Recent transactions:
 • No recent activity
 
-🌐 Check detailed balance on web: ${gameUrl}
+🌐 Check detailed balance on web: ${gameUrl}?uid=${uid}
       `;
 
             bot.editMessageText(balanceMessage, {
@@ -305,7 +452,7 @@ Recent transactions:
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '🌐 View on Web', url: gameUrl }
+                            { text: '🌐 View on Web', url: `${gameUrl}?uid=${uid}` }
                         ],
                         [
                             { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -325,7 +472,7 @@ Recent transactions:
 4️⃣ Player4 - 750 Birr
 5️⃣ Player5 - 600 Birr
 
-🌐 View full leaderboard: ${gameUrl}
+🌐 View full leaderboard: ${gameUrl}?uid=${uid}
       `;
 
             bot.editMessageText(leaderboardMessage, {
@@ -335,7 +482,7 @@ Recent transactions:
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '🌐 View Full Leaderboard', url: gameUrl }
+                            { text: '🌐 View Full Leaderboard', url: `${gameUrl}?uid=${uid}` }
                         ],
                         [
                             { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -354,11 +501,11 @@ Recent transactions:
 • Games Played: 0
 • Games Won: 0
 • Total Winnings: 0 Birr
-• Current Balance: ${userData.get(userId)?.balance || 0} Birr
+• Current Balance: ${userData?.wallet || 0} Birr
 
 🎯 Achievement: New Player
 
-🌐 View detailed profile: ${gameUrl}
+🌐 View detailed profile: ${gameUrl}?uid=${uid}
       `;
 
             bot.editMessageText(profileMessage, {
@@ -368,7 +515,7 @@ Recent transactions:
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '🌐 View Full Profile', url: gameUrl }
+                            { text: '🌐 View Full Profile', url: `${gameUrl}?uid=${uid}` }
                         ],
                         [
                             { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -384,7 +531,7 @@ Recent transactions:
 
 Choose deposit method:
 
-🌐 For instant deposits, visit: ${gameUrl}
+🌐 For instant deposits, visit: ${gameUrl}?uid=${uid}
       `;
 
             bot.editMessageText(depositMessage, {
@@ -398,7 +545,7 @@ Choose deposit method:
                             { text: '📱 Mobile Money', callback_data: 'deposit_mobile' }
                         ],
                         [
-                            { text: '🌐 Deposit on Web', url: gameUrl }
+                            { text: '🌐 Deposit on Web', url: `${gameUrl}?uid=${uid}` }
                         ],
                         [
                             { text: '🔙 Back', callback_data: 'back_to_main' }
@@ -412,11 +559,11 @@ Choose deposit method:
             const withdrawMessage = `
 💸 Withdraw Funds
 
-Your balance: ${userData.get(userId)?.balance || 0} Birr
+Your balance: ${userData?.wallet || 0} Birr
 
 Choose withdrawal method:
 
-🌐 For instant withdrawals, visit: ${gameUrl}
+🌐 For instant withdrawals, visit: ${gameUrl}?uid=${uid}
       `;
 
             bot.editMessageText(withdrawMessage, {
@@ -430,7 +577,7 @@ Choose withdrawal method:
                             { text: '📱 Mobile Money', callback_data: 'withdraw_mobile' }
                         ],
                         [
-                            { text: '🌐 Withdraw on Web', url: gameUrl }
+                            { text: '🌐 Withdraw on Web', url: `${gameUrl}?uid=${uid}` }
                         ],
                         [
                             { text: '🔙 Back', callback_data: 'back_to_main' }
@@ -466,7 +613,7 @@ How can I help you today?
                             { text: '💸 Withdraw', callback_data: 'withdraw' }
                         ],
                         [
-                            { text: '🌐 Play on Web', url: gameUrl }
+                            { text: '🌐 Play on Web', url: `${gameUrl}?uid=${uid}` }
                         ]
                     ]
                 }
@@ -481,7 +628,7 @@ How can I help you today?
 
 Now choose your cartela number (1-100):
 
-🌐 For better gaming experience, play on web: ${gameUrl}
+🌐 For better gaming experience, play on web: ${gameUrl}?uid=${uid}
         `;
 
                 // Create number grid
@@ -497,7 +644,7 @@ Now choose your cartela number (1-100):
 
                 // Add web play button
                 numberGrid.push([
-                    { text: '🌐 Play on Web', url: gameUrl }
+                    { text: '🌐 Play on Web', url: `${gameUrl}?uid=${uid}` }
                 ]);
 
                 bot.editMessageText(stakeMessage, {
@@ -518,7 +665,7 @@ Cartela Number: ${number}
 
 Game starting soon...
 
-🌐 For full gaming experience, play on web: ${gameUrl}
+🌐 For full gaming experience, play on web: ${gameUrl}?uid=${uid}
         `;
 
                 bot.editMessageText(cartelaMessage, {
@@ -528,7 +675,7 @@ Game starting soon...
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                { text: '🌐 Play Full Game on Web', url: gameUrl }
+                                { text: '🌐 Play Full Game on Web', url: `${gameUrl}?uid=${uid}` }
                             ],
                             [
                                 { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
