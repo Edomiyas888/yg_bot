@@ -30,7 +30,7 @@ A Telegram bot for the Genius Bingo gaming platform that allows users to play bi
    ```
 
 3. **Configure environment variables:**
-   - Copy `config.env.example` to `config.env`
+   - Copy `.env.example` to `.env`
    - Add your Telegram bot token and other configuration
 
 4. **Start the bot:**
@@ -49,15 +49,17 @@ A Telegram bot for the Genius Bingo gaming platform that allows users to play bi
 
 ### Environment Variables
 
-Create a `config.env` file with the following variables:
+Copy `.env.example` to `.env` and fill in:
 
 ```env
 BOT_TOKEN=your_telegram_bot_token_here
 BOT_USERNAME=your_bot_username_here
+HAPPY_BOT_TOKEN=your_happy_bot_token_here
+GAME_URL=https://your-hosted-app.example.com
 WEBHOOK_URL=https://your-domain.com/webhook
-DATABASE_URL=your_database_url_here
-API_KEY=your_api_key_here
 ```
+
+Never commit `.env` — only `.env.example` belongs in git.
 
 ## 🎮 Bot Commands
 
@@ -76,7 +78,8 @@ API_KEY=your_api_key_here
 telegram-bot/
 ├── bot.js              # Main bot logic and handlers
 ├── index.js            # Entry point
-├── config.env          # Environment configuration
+├── .env.example        # Env template (safe to commit)
+├── .env                # Local secrets (gitignored)
 ├── package.json        # Dependencies and scripts
 └── README.md          # This file
 ```

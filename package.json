@@ -8,6 +8,11 @@
     "dev": "nodemon bot.js",
     "deploy": "node bot-deploy.js",
     "local": "node bot.js",
+    "happy": "node happy-bot.js",
+    "happy-dev": "nodemon happy-bot.js",
+    "both": "node start-bots.js",
+    "start:both": "node start-bots.js",
+    "manager": "node bot-manager.js",
     "test": "node test-config.js",
     "test-config": "node test-config.js"
   },
@@ -23,8 +28,13 @@
   "dependencies": {
     "axios": "^1.6.0",
     "dotenv": "^16.3.1",
+    "firebase-admin": "^12.1.0",
+    "htmlparser2": "^9.0.0",
+    "https-proxy-agent": "^7.0.4",
     "node-telegram-bot-api": "^0.64.0",
-    "firebase-admin": "^12.1.0"
+    "pdf-parse": "^1.1.1",
+    "proxy-chain": "^2.4.0",
+    "puppeteer": "^22.11.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

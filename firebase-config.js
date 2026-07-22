@@ -1,28 +1,68 @@
 const admin = require('firebase-admin');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-// Firebase configuration
+// Firebase configuration for bgeno-8ec4c project
 const firebaseConfig = {
-    apiKey: "AIzaSyCY22Y4qXG5EVww8E79wdpydYVCb7c4oXM",
-    authDomain: "geno-5e7f5.firebaseapp.com",
-    databaseURL: "https://geno-5e7f5-default-rtdb.firebaseio.com",
-    projectId: "geno-5e7f5",
-    storageBucket: "geno-5e7f5.firebasestorage.app",
-    messagingSenderId: "943090926739",
-    appId: "1:943090926739:web:1e231ee60abe9034a43966",
-    measurementId: "G-6J8RM6R0KQ"
+    apiKey: "AIzaSyB38YwGa3Cl5omQWlQpDIEzAAlnCzep78o",
+    authDomain: "bgeno-8ec4c.firebaseapp.com",
+    projectId: "bgeno-8ec4c",
+    storageBucket: "bgeno-8ec4c.firebasestorage.app",
+    messagingSenderId: "589852176857",
+    appId: "1:589852176857:web:2ccc846caf867733fc69c8",
+    measurementId: "G-PKVH1XPX3B"
 };
 
-// Initialize Firebase Admin SDK
-// For production, you should use service account credentials
-// For now, we'll use the default credentials
+// Initialize Firebase Admin SDK with service account credentials
 try {
-    admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-        databaseURL: firebaseConfig.databaseURL,
-        projectId: firebaseConfig.projectId
-    });
-    console.log('✅ Firebase Admin SDK initialized successfully');
+    // Check if we have service account credentials
+    if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+        // Properly format the private key
+        let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+        // Remove quotes if they exist
+        if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+            privateKey = privateKey.slice(1, -1);
+        }
+
+        // Replace literal \n with actual newlines
+        privateKey = privateKey.replace(/\\n/g, '\n');
+
+        // Ensure the key starts and ends with proper PEM format
+        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            throw new Error('Invalid private key format');
+        }
+
+        const serviceAccount = {
+            type: "service_account",
+            project_id: firebaseConfig.projectId,
+            private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+            private_key: privateKey,
+            client_email: process.env.FIREBASE_CLIENT_EMAIL,
+            client_id: process.env.FIREBASE_CLIENT_ID,
+            auth_uri: "https://accounts.google.com/o/oauth2/auth",
+            token_uri: "https://oauth2.googleapis.com/token",
+            auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+            client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
+        };
+
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            databaseURL: `https://${firebaseConfig.projectId}-default-rtdb.firebaseio.com`,
+            projectId: firebaseConfig.projectId
+        });
+        console.log('✅ Firebase Admin SDK initialized successfully with service account credentials');
+    } else {
+        // Fallback to default credentials
+        admin.initializeApp({
+            credential: admin.credential.applicationDefault(),
+            databaseURL: `https://${firebaseConfig.projectId}-default-rtdb.firebaseio.com`,
+            projectId: firebaseConfig.projectId
+        });
+        console.log('⚠️ Firebase Admin SDK initialized with default credentials (service account not configured)');
+    }
 } catch (error) {
+    console.error('❌ Error initializing Firebase Admin SDK:', error.message);
     console.log('⚠️ Firebase Admin SDK already initialized or using default credentials');
 }
 

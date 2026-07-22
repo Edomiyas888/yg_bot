@@ -1,4 +1,4 @@
-require('dotenv').config({ path: './config.env' });
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 console.log('🔍 Testing Configuration...\n');
 
@@ -30,7 +30,7 @@ console.log('BOT_USERNAME:', botUsername ? 'SET' : 'NOT SET');
 
 if (!token || token === 'your_telegram_bot_token_here') {
     console.log('\n❌ Configuration Error: Bot token is not properly configured!');
-    console.log('Please check your config.env file.');
+    console.log('Please check your .env file.');
     process.exit(1);
 } else {
     console.log('\n✅ Configuration looks good! You can start the bot.');

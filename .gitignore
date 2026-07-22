@@ -8,6 +8,7 @@ yarn-error.log*
 .env
 config.env
 *.env
+!.env.example
 
 # Logs
 logs
