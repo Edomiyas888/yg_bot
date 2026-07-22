@@ -36,5 +36,8 @@ RUN npm ci --omit=dev
 
 COPY . .
 
-# Bot uses long-running Telegram polling — no HTTP port required
+# Health server binds to PORT (Northflank sets this, default 8080)
+ENV PORT=8080
+EXPOSE 8080
+
 CMD ["npm", "start"]

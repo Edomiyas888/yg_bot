@@ -857,6 +857,13 @@ if (!token || token === 'your_telegram_bot_token_here') {
 console.log('✅ Bot token loaded successfully');
 console.log('✅ Game URL:', gameUrl);
 
+// Northflank / code.run public URL needs an HTTP listener
+try {
+    require('./health-server').startHealthServer();
+} catch (err) {
+    console.warn('⚠️ Health server failed to start:', err.message);
+}
+
 const bot = new TelegramBot(token, { polling: false });
 
 // Function to check if user is registered

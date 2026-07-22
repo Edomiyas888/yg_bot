@@ -1,7 +1,7 @@
 const bot = require('./bot-deploy');
 
 // Start the bot
-console.log('🚀 Starting Genius Bingo Telegram Bot...');
+console.log('🚀 Starting YG Bingo Telegram Bot...');
 
 // Handle process termination
 process.on('SIGINT', () => {
