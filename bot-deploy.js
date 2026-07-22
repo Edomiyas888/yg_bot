@@ -123,42 +123,67 @@ function loadServiceAccount() {
     });
 }
 
-const serviceAccount = loadServiceAccount();
-const firebaseProjectId = serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || 'bgeno2-fa38b';
+const BUILD_MARKER = 'yg-bot-firebase-b64-v3';
+console.log(`🚀 BOOT ${BUILD_MARKER}`);
+console.log('🔐 Env flags:', {
+    hasB64: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_B64),
+    hasJson: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON),
+    hasPrivateKey: Boolean(process.env.FIREBASE_PRIVATE_KEY),
+    hasClientEmail: Boolean(process.env.FIREBASE_CLIENT_EMAIL),
+});
 
-// Expose auth status for /health (no secrets)
-global.__ygFirebaseAuth = { ok: false, projectId: firebaseProjectId, email: serviceAccount.client_email || null, error: null };
+let serviceAccount = null;
+let firebaseProjectId = process.env.FIREBASE_PROJECT_ID || 'bgeno2-fa38b';
+let db = null;
 
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-    try {
+global.__ygFirebaseAuth = {
+    ok: false,
+    projectId: firebaseProjectId,
+    email: null,
+    error: null,
+    build: BUILD_MARKER,
+};
+
+try {
+    serviceAccount = loadServiceAccount();
+    firebaseProjectId = serviceAccount.project_id || firebaseProjectId;
+    global.__ygFirebaseAuth.projectId = firebaseProjectId;
+    global.__ygFirebaseAuth.email = serviceAccount.client_email || null;
+
+    if (!admin.apps.length) {
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
             databaseURL: process.env.FIREBASE_DATABASE_URL || `https://${firebaseProjectId}-default-rtdb.firebaseio.com/`,
             projectId: firebaseProjectId,
         });
-        console.log(`✅ Firebase Admin initialized for project ${firebaseProjectId} (${serviceAccount.client_email})`);
-    } catch (err) {
-        global.__ygFirebaseAuth.error = err.message;
-        console.error('❌ Firebase Admin init failed:', err.message);
-        throw err;
     }
+    db = admin.firestore();
+    console.log(`✅ Firebase Admin initialized for project ${firebaseProjectId} (${serviceAccount.client_email})`);
+
+    // Verify credentials immediately (catches UNAUTHENTICATED at boot)
+    db.collection('users').limit(1).get()
+        .then(() => {
+            global.__ygFirebaseAuth.ok = true;
+            console.log('✅ Firebase credentials verified (Firestore read OK)');
+        })
+        .catch((err) => {
+            global.__ygFirebaseAuth.ok = false;
+            global.__ygFirebaseAuth.error = err.message;
+            console.error('❌ Firebase credentials INVALID at startup:', err.message);
+            console.error('👉 Set FIREBASE_SERVICE_ACCOUNT_B64 on Northflank, then redeploy latest commit');
+        });
+} catch (err) {
+    global.__ygFirebaseAuth.error = err.message;
+    console.error('❌ Firebase setup failed (bot will stay up for /health):', err.message);
+    console.error('👉 Northflank must build latest git commit and set FIREBASE_SERVICE_ACCOUNT_B64');
 }
 
-const db = admin.firestore();
-
-// Verify credentials immediately (catches UNAUTHENTICATED at boot)
-db.collection('users').limit(1).get()
-    .then(() => {
-        global.__ygFirebaseAuth.ok = true;
-        console.log('✅ Firebase credentials verified (Firestore read OK)');
-    })
-    .catch((err) => {
-        global.__ygFirebaseAuth.ok = false;
-        global.__ygFirebaseAuth.error = err.message;
-        console.error('❌ Firebase credentials INVALID at startup:', err.message);
-        console.error('👉 On Northflank set ONLY FIREBASE_SERVICE_ACCOUNT_B64 (and delete old FIREBASE_PRIVATE_KEY* vars)');
-    });
+function requireDb() {
+    if (!db) {
+        throw new Error('Firebase is not configured. On Northflank: rebuild latest commit + set FIREBASE_SERVICE_ACCOUNT_B64');
+    }
+    return db;
+}
 
 // Firebase Functions will be called via HTTP requests since we're using Admin SDK
 
@@ -1134,6 +1159,7 @@ You're already registered! Ready to play?
 // Function to create user in Firebase (doc id = telegram id for Mini App)
 async function createUser(userId, userName, phone, referralCode = null) {
     try {
+        const firestore = requireDb();
         const uid = String(userId);
         const normalizedPhoneNumber = normalizePhone(phone);
         if (!normalizedPhoneNumber) {
@@ -1141,7 +1167,7 @@ async function createUser(userId, userName, phone, referralCode = null) {
         }
 
         // Already registered under telegram id
-        const existingById = await db.collection('users').doc(uid).get();
+        const existingById = await firestore.collection('users').doc(uid).get();
         if (existingById.exists) {
             await existingById.ref.set({
                 phone: normalizedPhoneNumber,
@@ -1157,7 +1183,7 @@ async function createUser(userId, userName, phone, referralCode = null) {
         const existingUser = await getUserByPhone(phone);
         if (existingUser) {
             if (!existingUser.telegramId || String(existingUser.telegramId) === uid) {
-                await db.collection('users').doc(existingUser.uid).set({
+                await firestore.collection('users').doc(existingUser.uid).set({
                     telegramId: uid,
                     userName: userName || existingUser.userName,
                     name: userName || existingUser.name || existingUser.userName,
@@ -1170,7 +1196,7 @@ async function createUser(userId, userName, phone, referralCode = null) {
             throw new Error('Phone number already registered');
         }
 
-        await db.collection('users').doc(uid).set({
+        await firestore.collection('users').doc(uid).set({
             uid,
             userName: userName,
             name: userName,

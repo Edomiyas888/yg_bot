@@ -14,6 +14,7 @@ function startHealthServer() {
             const body = JSON.stringify({
                 ok: true,
                 service: 'yg-bingo-bot',
+                build: fb.build || null,
                 gameUrl: process.env.GAME_URL || 'https://ygbingo.netlify.app/',
                 firebase: {
                     ok: Boolean(fb.ok),
