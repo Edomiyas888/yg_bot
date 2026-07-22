@@ -28,43 +28,88 @@ function resolveChromeExecutablePath() {
 }
 
 // Initialize Firebase Admin SDK
-function getFirebasePrivateKey() {
-    let key = process.env.FIREBASE_PRIVATE_KEY || '';
-    if (!key) return undefined;
-    key = key.trim();
-    if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
-        key = key.slice(1, -1);
+function stripWrappingQuotes(value) {
+    let v = String(value || '').trim();
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+        v = v.slice(1, -1);
     }
+    return v.trim();
+}
+
+function getFirebasePrivateKey() {
+    let key = stripWrappingQuotes(process.env.FIREBASE_PRIVATE_KEY || '');
+    if (!key) return undefined;
     return key.replace(/\\n/g, '\n');
 }
 
+function normalizeServiceAccount(parsed) {
+    if (!parsed || typeof parsed !== 'object') {
+        throw new Error('Service account must be a JSON object');
+    }
+    if (parsed.private_key) {
+        parsed.private_key = stripWrappingQuotes(parsed.private_key).replace(/\\n/g, '\n');
+    }
+    if (!parsed.private_key || !parsed.client_email) {
+        throw new Error('Service account missing private_key or client_email');
+    }
+    if (!parsed.private_key.includes('BEGIN PRIVATE KEY')) {
+        throw new Error('Service account private_key is malformed');
+    }
+    return parsed;
+}
+
+function parseServiceAccountJson(raw) {
+    let text = stripWrappingQuotes(raw);
+    // Some platforms store JSON stringified twice
+    try {
+        let parsed = JSON.parse(text);
+        if (typeof parsed === 'string') {
+            parsed = JSON.parse(parsed);
+        }
+        return normalizeServiceAccount(parsed);
+    } catch (err) {
+        throw new Error(`Invalid FIREBASE_SERVICE_ACCOUNT_JSON: ${err.message}`);
+    }
+}
+
 function loadServiceAccount() {
-    // Preferred on Northflank: paste the full Firebase service-account JSON
+    // Most reliable on Northflank: base64 of the service-account JSON
+    const b64 = stripWrappingQuotes(process.env.FIREBASE_SERVICE_ACCOUNT_B64 || '');
+    if (b64) {
+        try {
+            const decoded = Buffer.from(b64, 'base64').toString('utf8');
+            const parsed = parseServiceAccountJson(decoded);
+            console.log('🔐 Loaded Firebase credentials from FIREBASE_SERVICE_ACCOUNT_B64');
+            return parsed;
+        } catch (err) {
+            // Do NOT fall back — otherwise old broken keys silently take over
+            throw new Error(`FIREBASE_SERVICE_ACCOUNT_B64 error: ${err.message}`);
+        }
+    }
+
+    // Preferred: full JSON string
     const rawJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     if (rawJson) {
         try {
-            const parsed = JSON.parse(rawJson);
-            if (parsed.private_key) {
-                parsed.private_key = String(parsed.private_key).replace(/\\n/g, '\n');
-            }
+            const parsed = parseServiceAccountJson(rawJson);
+            console.log('🔐 Loaded Firebase credentials from FIREBASE_SERVICE_ACCOUNT_JSON');
             return parsed;
         } catch (err) {
-            console.error('❌ FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON:', err.message);
+            throw new Error(err.message);
         }
     }
 
     // Optional: path to downloaded JSON file
     const jsonPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     if (jsonPath && fs.existsSync(jsonPath)) {
-        try {
-            return JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-        } catch (err) {
-            console.error('❌ Failed to read GOOGLE_APPLICATION_CREDENTIALS:', err.message);
-        }
+        const parsed = normalizeServiceAccount(JSON.parse(fs.readFileSync(jsonPath, 'utf8')));
+        console.log('🔐 Loaded Firebase credentials from GOOGLE_APPLICATION_CREDENTIALS file');
+        return parsed;
     }
 
     const firebaseProjectId = process.env.FIREBASE_PROJECT_ID || 'bgeno2-fa38b';
-    return {
+    console.log('🔐 Loaded Firebase credentials from individual FIREBASE_* env vars');
+    return normalizeServiceAccount({
         type: 'service_account',
         project_id: firebaseProjectId,
         private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
@@ -75,32 +120,45 @@ function loadServiceAccount() {
         token_uri: 'https://oauth2.googleapis.com/token',
         auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
         client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-    };
+    });
 }
 
 const serviceAccount = loadServiceAccount();
 const firebaseProjectId = serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || 'bgeno2-fa38b';
 
+// Expose auth status for /health (no secrets)
+global.__ygFirebaseAuth = { ok: false, projectId: firebaseProjectId, email: serviceAccount.client_email || null, error: null };
+
 // Initialize Firebase Admin
 if (!admin.apps.length) {
-    if (!serviceAccount.private_key || !serviceAccount.client_email) {
-        console.error('❌ Missing Firebase service account credentials — registration will fail');
-        console.error('Set FIREBASE_SERVICE_ACCOUNT_JSON (recommended) or FIREBASE_PRIVATE_KEY + FIREBASE_CLIENT_EMAIL');
-    }
     try {
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
             databaseURL: process.env.FIREBASE_DATABASE_URL || `https://${firebaseProjectId}-default-rtdb.firebaseio.com/`,
             projectId: firebaseProjectId,
         });
-        console.log(`✅ Firebase Admin initialized for project ${firebaseProjectId}`);
+        console.log(`✅ Firebase Admin initialized for project ${firebaseProjectId} (${serviceAccount.client_email})`);
     } catch (err) {
+        global.__ygFirebaseAuth.error = err.message;
         console.error('❌ Firebase Admin init failed:', err.message);
         throw err;
     }
 }
 
 const db = admin.firestore();
+
+// Verify credentials immediately (catches UNAUTHENTICATED at boot)
+db.collection('users').limit(1).get()
+    .then(() => {
+        global.__ygFirebaseAuth.ok = true;
+        console.log('✅ Firebase credentials verified (Firestore read OK)');
+    })
+    .catch((err) => {
+        global.__ygFirebaseAuth.ok = false;
+        global.__ygFirebaseAuth.error = err.message;
+        console.error('❌ Firebase credentials INVALID at startup:', err.message);
+        console.error('👉 On Northflank set ONLY FIREBASE_SERVICE_ACCOUNT_B64 (and delete old FIREBASE_PRIVATE_KEY* vars)');
+    });
 
 // Firebase Functions will be called via HTTP requests since we're using Admin SDK
 

@@ -159,3 +159,10 @@ docker-compose.override.yml
 
 # Local development
 .local/ 
+FIREBASE_SERVICE_ACCOUNT_JSON.txt
+
+*service-account*.json
+
+*SERVICE_ACCOUNT*
+
+FIREBASE_SERVICE_ACCOUNT_B64.txt
