@@ -860,7 +860,7 @@ try {
 
 // Bot configuration with validation
 const token = process.env.BOT_TOKEN;
-const gameUrl = process.env.GAME_URL || 'https://GeniusBingoBot.netlify.app';
+const gameUrl = process.env.GAME_URL || 'https://ygbingo.netlify.app';
 
 // Debug information
 console.log('🔍 Debug Information:');
@@ -882,7 +882,7 @@ if (!token || token === 'your_telegram_bot_token_here') {
         console.error('\n🚀 DEPLOYMENT SETUP:');
         console.error('Set these environment variables in your deployment platform (never commit real values):');
         console.error('BOT_TOKEN=your_telegram_bot_token_here');
-        console.error('GAME_URL=https://your-hosted-app.example.com');
+        console.error('GAME_URL=https://ygbingo.netlify.app');
         console.error('BOT_USERNAME=your_bot_username_here');
     }
 
@@ -1825,7 +1825,7 @@ Redirecting you to the web platform...
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '🌐 Open Web Game', url: `${gameUrl}?uid=${uid}` }
+                            { text: '🌐 Open Web Game', web_app: { url: gameUrl } }
                         ],
                         [
                             { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -2410,7 +2410,7 @@ Features on web:
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🌐 Open Web Game', url: `${gameUrl}?uid=${uid}` }
+                    { text: '🌐 Open Web Game', web_app: { url: gameUrl } }
                 ],
                 [
                     { text: '🔙 Back to Menu', callback_data: 'back_to_main' }

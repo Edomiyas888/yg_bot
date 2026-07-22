@@ -72,7 +72,7 @@ try {
 }
 
 // Game URL (same as main bot)
-const gameUrl = 'https://GeniusBingoBot.netlify.app';
+const gameUrl = process.env.GAME_URL || 'https://ygbingo.netlify.app/';
 
 // In-memory conversation state per user
 const userStates = new Map();
@@ -1327,7 +1327,7 @@ Where would you like to play Happy Genius Bingo?
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🌐 Play on Web', url: `${gameUrl}?uid=${uid}` }
+                    { text: '🌐 Play on Web', web_app: { url: gameUrl } }
                 ],
                 [
                     { text: '📱 Play on Telegram', callback_data: 'play_telegram' }
@@ -1363,7 +1363,7 @@ bot.onText(/\/balance/, async (msg) => {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🌐 Open Web App', url: `${gameUrl}?uid=${uid}` }
+                    { text: '🌐 Open Web App', web_app: { url: gameUrl } }
                 ]
             ]
         }
@@ -1441,7 +1441,7 @@ Features on web:
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🌐 Open Happy Game', url: `${gameUrl}?uid=${uid}` }
+                    { text: '🌐 Open Happy Game', web_app: { url: gameUrl } }
                 ]
             ]
         }
@@ -1549,7 +1549,7 @@ bot.on('callback_query', async (query) => {
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '🌐 Play on Web', url: `${gameUrl}?uid=${uid}` }
+                            { text: '🌐 Play on Web', web_app: { url: gameUrl } }
                         ]
                     ]
                 }
@@ -1763,7 +1763,7 @@ Where would you like to play Happy Genius Bingo?
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                { text: '🌐 Play on Web', url: `${gameUrl}?uid=${uid}` }
+                                { text: '🌐 Play on Web', web_app: { url: gameUrl } }
                             ],
                             [
                                 { text: '📱 Play on Telegram', callback_data: 'play_telegram' }
@@ -1787,7 +1787,7 @@ Where would you like to play Happy Genius Bingo?
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                { text: '🌐 Open Web App', url: `${gameUrl}?uid=${uid}` }
+                                { text: '🌐 Open Web App', web_app: { url: gameUrl } }
                             ]
                         ]
                     }
@@ -1808,7 +1808,7 @@ ${gameUrl}?uid=${uid}
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                { text: '🌐 Open Happy Game', url: `${gameUrl}?uid=${uid}` }
+                                { text: '🌐 Open Happy Game', web_app: { url: gameUrl } }
                             ]
                         ]
                     }

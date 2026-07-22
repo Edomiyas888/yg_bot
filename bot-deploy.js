@@ -839,7 +839,7 @@ function sendCBEDepositInstructions(bot, chatId) {
 
 // Bot configuration with validation
 const token = process.env.BOT_TOKEN;
-const gameUrl = process.env.GAME_URL || 'https://direselambingobotpro.netlify.app/';
+const gameUrl = process.env.GAME_URL || 'https://ygbingo.netlify.app/';
 
 // Debug information
 console.log('🔍 Debug Information:');
@@ -1417,7 +1417,7 @@ Redirecting you to the web platform for the best gaming experience!
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🎮 Play Now', url: `${gameUrl}?uid=${uid}` }
+                    { text: '🎮 Play Now', web_app: { url: gameUrl } }
                 ],
                 [
                     { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -1538,7 +1538,7 @@ Redirecting you to the web platform for the best gaming experience!
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '🎮 Play Now', url: `${gameUrl}?uid=${uid}` }
+                            { text: '🎮 Play Now', web_app: { url: gameUrl } }
                         ],
                         [
                             { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -1594,7 +1594,7 @@ Redirecting you to the web platform...
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '🌐 Open Web Game', url: `${gameUrl}?uid=${uid}` }
+                            { text: '🌐 Open Web Game', web_app: { url: gameUrl } }
                         ],
                         [
                             { text: '🔙 Back to Menu', callback_data: 'back_to_main' }
@@ -1958,7 +1958,7 @@ Redirecting you to the web platform for the best gaming experience!
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🎮 Play Now', url: `${gameUrl}?uid=${uid}` }
+                    { text: '🎮 Play Now', web_app: { url: gameUrl } }
                 ],
                 [
                     { text: '🔙 Back to Menu', callback_data: 'back_to_main' }

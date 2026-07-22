@@ -145,10 +145,8 @@ credentials.json
 ecosystem.config.js
 .pm2/
 
-# Docker
-Dockerfile
-docker-compose.yml
-.dockerignore
+# Docker local overrides (keep Dockerfile committed for Northflank)
+docker-compose.override.yml
 
 # Heroku
 .heroku/

@@ -1,0 +1,33 @@
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.git
+.gitignore
+.DS_Store
+
+# Secrets — inject via Northflank/env, never bake into image
+.env
+.env.*
+!.env.example
+config.env
+*.pem
+*.key
+credentials.json
+secrets.json
+service-account*.json
+
+# Dev / docs / local junk
+README.md
+BOT-MANAGER-README.md
+botdash.code-workspace
+.vscode
+.idea
+coverage
+tmp
+temp
+*.log
+.pm2
+.dockerignore
+Dockerfile

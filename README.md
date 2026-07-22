@@ -55,7 +55,7 @@ Copy `.env.example` to `.env` and fill in:
 BOT_TOKEN=your_telegram_bot_token_here
 BOT_USERNAME=your_bot_username_here
 HAPPY_BOT_TOKEN=your_happy_bot_token_here
-GAME_URL=https://your-hosted-app.example.com
+GAME_URL=https://ygbingo.netlify.app
 WEBHOOK_URL=https://your-domain.com/webhook
 ```
 

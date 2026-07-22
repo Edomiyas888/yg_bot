@@ -1,7 +1,7 @@
 {
-  "name": "genius-bingo-telegram-bot",
+  "name": "yg-bingo-telegram-bot",
   "version": "1.0.0",
-  "description": "Telegram bot for Genius Bingo gaming platform",
+  "description": "Telegram bot for YG Bingo gaming platform",
   "main": "index.js",
   "scripts": {
     "start": "node bot-deploy.js",

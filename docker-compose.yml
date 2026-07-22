@@ -1,0 +1,11 @@
+services:
+  yg-bingo-bot:
+    build: .
+    container_name: yg-bingo-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      GAME_URL: https://ygbingo.netlify.app/
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
