@@ -28,25 +28,40 @@ function resolveChromeExecutablePath() {
 }
 
 // Initialize Firebase Admin SDK
+function getFirebasePrivateKey() {
+    let key = process.env.FIREBASE_PRIVATE_KEY || '';
+    if (!key) return undefined;
+    key = key.trim();
+    if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+        key = key.slice(1, -1);
+    }
+    return key.replace(/\\n/g, '\n');
+}
+
+const firebaseProjectId = process.env.FIREBASE_PROJECT_ID || 'bgeno2-fa38b';
 const serviceAccount = {
-    "type": "service_account",
-    "project_id": "bgeno2-fa38b",
-    "private_key_id": process.env.FIREBASE_PRIVATE_KEY_ID,
-    "private_key": process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
-    "client_email": process.env.FIREBASE_CLIENT_EMAIL,
-    "client_id": process.env.FIREBASE_CLIENT_ID,
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": process.env.FIREBASE_CLIENT_CERT_URL
+    type: 'service_account',
+    project_id: firebaseProjectId,
+    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+    private_key: getFirebasePrivateKey(),
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    client_id: process.env.FIREBASE_CLIENT_ID,
+    auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+    token_uri: 'https://oauth2.googleapis.com/token',
+    auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
 };
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
+    if (!serviceAccount.private_key || !serviceAccount.client_email) {
+        console.error('❌ Missing FIREBASE_PRIVATE_KEY or FIREBASE_CLIENT_EMAIL — registration will fail');
+    }
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        databaseURL: "https://bgeno2-fa38b-default-rtdb.firebaseio.com/"
+        databaseURL: process.env.FIREBASE_DATABASE_URL || `https://${firebaseProjectId}-default-rtdb.firebaseio.com/`,
     });
+    console.log(`✅ Firebase Admin initialized for project ${firebaseProjectId}`);
 }
 
 const db = admin.firestore();
@@ -796,7 +811,7 @@ function sendDepositInstructions(bot, chatId) {
 የምሳሌ መልዕክት (እንደሚገኘው በትክክል ይላኩ):
 "Dear Kaleb\\nYou have transferred ETB 20.00 to Danha alemhu (2519****3152) on 11/08/2025 21:30:07. Your transaction number is CHB657ZKOA. ... To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CHB657ZKOA.\\n\\nThank you for using telebirr\\nEthio telecom"
 
-🆘 ችግር ካጋጠመዎት፣ ሁልጊዜ @DireSelamBingosupport ያግኙ።
+🆘 ችግር ካጋጠመዎት፣ ሁልጊዜ @yg_bingo_bot ያግኙ።
 
 `;
 
@@ -866,11 +881,33 @@ try {
 
 const bot = new TelegramBot(token, { polling: false });
 
+function normalizePhone(phone) {
+    let digits = String(phone || '').replace(/\D/g, '');
+    if (!digits) return '';
+    // Ethiopia local 09xxxxxxxx -> 2519xxxxxxxx
+    if (digits.startsWith('0') && digits.length === 10) {
+        digits = `251${digits.slice(1)}`;
+    }
+    // 9xxxxxxxx -> 2519xxxxxxxx
+    if (digits.length === 9 && digits.startsWith('9')) {
+        digits = `251${digits}`;
+    }
+    return digits;
+}
+
+function phoneLookupVariants(phone) {
+    const normalized = normalizePhone(phone);
+    const variants = new Set([normalized, `+${normalized}`]);
+    const raw = String(phone || '').replace(/\s+/g, '').replace(/-/g, '');
+    if (raw) variants.add(raw);
+    return [...variants].filter(Boolean);
+}
+
 // Function to check if user is registered
 async function isUserRegistered(userId) {
     try {
-        const userDoc = await db.collection('users').where('telegramId', '==', userId.toString()).get();
-        return !userDoc.empty;
+        const data = await getUserData(userId);
+        return Boolean(data);
     } catch (error) {
         console.error('Error checking user registration:', error);
         return false;
@@ -880,21 +917,29 @@ async function isUserRegistered(userId) {
 // Function to get user data from Firebase (MAIN BOT - non-happy users only)
 async function getUserData(userId) {
     try {
-        const userDoc = await db.collection('users').where('telegramId', '==', userId.toString()).get();
+        const uid = String(userId);
+
+        // Prefer doc id == telegram id (Mini App / new registrations)
+        const byId = await db.collection('users').doc(uid).get();
+        if (byId.exists) {
+            const data = byId.data() || {};
+            if (!uid.startsWith('happy_')) {
+                return { ...data, uid };
+            }
+        }
+
+        const userDoc = await db.collection('users').where('telegramId', '==', uid).get();
         if (!userDoc.empty) {
             // MAIN BOT: Look for non-happy accounts specifically
             for (const doc of userDoc.docs) {
-                const uid = doc.id;
-                if (!uid.startsWith('happy_')) {
-                    // Found a main account
+                const docId = doc.id;
+                if (!docId.startsWith('happy_')) {
                     return {
                         ...doc.data(),
-                        uid: uid
+                        uid: docId
                     };
                 }
             }
-            // Only happy accounts found
-            return null;
         }
         return null;
     } catch (error) {
@@ -940,10 +985,9 @@ async function isPhoneRegistered(phone) {
 // Function to get user by phone number
 async function getUserByPhone(phone) {
     try {
-        const normalizedPhone = phone.replace(/\s+/g, '').replace(/-/g, '');
-        const userDoc = await db.collection('users').where('phone', '==', normalizedPhone).get();
-        if (!userDoc.empty) {
-            // MAIN BOT: Only return non-happy accounts
+        for (const candidate of phoneLookupVariants(phone)) {
+            const userDoc = await db.collection('users').where('phone', '==', candidate).limit(5).get();
+            if (userDoc.empty) continue;
             for (const doc of userDoc.docs) {
                 const uid = doc.id;
                 if (!uid.startsWith('happy_')) {
@@ -993,37 +1037,65 @@ You're already registered! Ready to play?
     });
 }
 
-// Function to create user in Firebase
+// Function to create user in Firebase (doc id = telegram id for Mini App)
 async function createUser(userId, userName, phone, referralCode = null) {
     try {
-        // Check if phone number is already registered
+        const uid = String(userId);
+        const normalizedPhoneNumber = normalizePhone(phone);
+        if (!normalizedPhoneNumber) {
+            throw new Error('Invalid phone number');
+        }
+
+        // Already registered under telegram id
+        const existingById = await db.collection('users').doc(uid).get();
+        if (existingById.exists) {
+            await existingById.ref.set({
+                phone: normalizedPhoneNumber,
+                userName: userName || existingById.data()?.userName,
+                name: userName || existingById.data()?.name,
+                telegramId: uid,
+                lastLogin: new Date().toISOString(),
+            }, { merge: true });
+            return uid;
+        }
+
+        // Phone already used — link telegram if same/empty, else block
         const existingUser = await getUserByPhone(phone);
         if (existingUser) {
+            if (!existingUser.telegramId || String(existingUser.telegramId) === uid) {
+                await db.collection('users').doc(existingUser.uid).set({
+                    telegramId: uid,
+                    userName: userName || existingUser.userName,
+                    name: userName || existingUser.name || existingUser.userName,
+                    phone: normalizedPhoneNumber,
+                    lastLogin: new Date().toISOString(),
+                    source: existingUser.source || 'telegram',
+                }, { merge: true });
+                return existingUser.uid;
+            }
             throw new Error('Phone number already registered');
         }
 
-        // Normalize the phone number (e.g., remove spaces, dashes) - same as web app
-        const normalizedPhoneNumber = phone.replace(/\s+/g, '').replace(/-/g, '');
-
-
-        const userRef = await db.collection('users').add({
-            userName: userName, // Match web app field name
-            phone: normalizedPhoneNumber, // Match web app field name and normalization
-            telegramId: userId.toString(), // Additional field for Telegram users
-            wallet: 0, // Start with 0 balance
+        await db.collection('users').doc(uid).set({
+            uid,
+            userName: userName,
+            name: userName,
+            phone: normalizedPhoneNumber,
+            telegramId: uid,
+            wallet: 0,
             isAdult: true,
             agreeTerms: true,
-            // Daily leaderboard fields (matching web app system)
             dailyLeaderboardPoints: 0,
             dailyTotalGames: 0,
             dailyTotalWins: 0,
             dailyTotalWinnings: 0,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+            source: 'telegram',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastLogin: new Date().toISOString(),
+            ...(referralCode ? { referralCode } : {}),
         });
 
-        const newUserId = userRef.id;
-
-        return newUserId;
+        return uid;
     } catch (error) {
         console.error('Error creating user:', error);
         throw error;
@@ -1125,7 +1197,7 @@ bot.onText(/\/start/, async (msg) => {
         // Sanitize userName to prevent parsing issues
         const sanitizedUserName = userName ? userName.replace(/[<>]/g, '') : 'User';
 
-        let welcomeText = `🎰 Welcome to DireSelam Bingo Bot, ${sanitizedUserName}! 🏆
+        let welcomeText = `🎰 Welcome to YG Bingo Bot, ${sanitizedUserName}! 🏆
 
 I'm here to help you with your bingo gaming experience.
 
@@ -1145,7 +1217,7 @@ To get started, please register with your phone number!`;
         } catch (error) {
             console.error('[Main Bot] Error sending welcome message:', error);
             // Fallback message without special characters
-            await safeSendMessage(chatId, `Welcome to DireSelam Bingo Bot! Please share your phone number to register.`, {
+            await safeSendMessage(chatId, `Welcome to YG Bingo Bot! Please share your phone number to register.`, {
                 reply_markup: {
                     keyboard: [
                         [{ text: '📱 Register', request_contact: true }]
@@ -1162,7 +1234,7 @@ To get started, please register with your phone number!`;
         const sanitizedUserName = userName ? userName.replace(/[<>]/g, '') : 'User';
 
         const welcomeMessage = `
-🎰 Welcome back to DireSelam Bingo Bot, ${sanitizedUserName}! 🏆
+🎰 Welcome back to YG Bingo Bot, ${sanitizedUserName}! 🏆
 
 Your balance: ${userData?.wallet || 0} Birr
 
@@ -1204,7 +1276,7 @@ How can I help you today?
         } catch (error) {
             console.error('[Main Bot] Error sending existing user welcome message:', error);
             // Fallback message without special characters
-            await safeSendMessage(chatId, `Welcome back to DireSelam Bingo Bot! Your balance: ${userData?.wallet || 0} Birr`, {
+            await safeSendMessage(chatId, `Welcome back to YG Bingo Bot! Your balance: ${userData?.wallet || 0} Birr`, {
                 reply_markup: {
                     keyboard: [
                         [
@@ -1231,77 +1303,71 @@ How can I help you today?
 bot.on('contact', async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
-    const userName = msg.from.first_name;
+    const userName = msg.from.first_name || msg.from.username || 'Player';
     const contact = msg.contact;
 
-    // Check if this is the user's own contact
-    if (contact.user_id === userId) {
-        try {
-            // Check if user is already registered
-            const existingMainUser = await getUserData(userId);
-            if (existingMainUser) {
-                bot.sendMessage(chatId, '✅ You are already registered! Use /start to see your options.');
-                return;
-            }
+    // Accept own contact (Telegram user_id may be number/string)
+    const contactUid = contact?.user_id != null ? Number(contact.user_id) : null;
+    const isOwnContact = contactUid === Number(userId);
 
-            // Check if phone is already registered
+    if (!isOwnContact) {
+        bot.sendMessage(chatId, '❌ Please share your own phone number for registration.');
+        return;
+    }
+
+    try {
+        const existingMainUser = await getUserData(userId);
+        if (existingMainUser) {
+            bot.sendMessage(chatId, '✅ You are already registered! Use /start to see your options.');
+            return;
+        }
+
+        const uid = await createUser(userId, userName, contact.phone_number);
+
+        const successMessage = `
+✅ Registration Successful!
+
+Welcome to YG Bingo, ${userName}!
+Your account has been created successfully.
+
+Your UID: <code>${uid}</code>
+
+Tap Play to open the game!
+`;
+
+        bot.sendMessage(chatId, successMessage, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                keyboard: [
+                    [
+                        { text: '🎮 Play' },
+                        { text: '💰 Balance' }
+                    ],
+                    [
+                        { text: '💳 Deposit' },
+                        { text: '💸 Withdraw' }
+                    ],
+                    [
+                        { text: '🌐 Play on Web', web_app: { url: gameUrl } }
+                    ]
+                ],
+                resize_keyboard: true,
+                persistent: true
+            }
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+
+        if (error.message === 'Phone number already registered') {
             const existingUser = await getUserByPhone(contact.phone_number);
             if (existingUser) {
-                // Phone is used by another account - show that profile
                 await showUserProfile(chatId, existingUser);
                 return;
             }
-
-            // User is not registered, create new account
-            const uid = await createUser(userId, userName, contact.phone_number);
-
-            const successMessage = `
-✅ Registration Successful!
-
-Welcome to DireSelam Bingo, ${userName}!
-Your account has been created successfully.
-
-Your UID: ${uid}
-
-You can now start playing!
-  `;
-
-            bot.sendMessage(chatId, successMessage, {
-                parse_mode: 'HTML',
-                reply_markup: {
-                    keyboard: [
-                        [
-                            { text: '🎮 Play' },
-                            { text: '💰 Balance' }
-                        ],
-                        [
-                            { text: '💳 Deposit' },
-                            { text: '💸 Withdraw' }
-                        ],
-                        [
-                            { text: '🌐 Play on Web' }
-                        ]
-                    ],
-                    resize_keyboard: true,
-                    persistent: true
-                }
-            });
-        } catch (error) {
-            console.error('Registration error:', error);
-
-            // Check if the error is due to phone already being registered
-            if (error.message === 'Phone number already registered') {
-                const existingUser = await getUserByPhone(contact.phone_number);
-                if (existingUser) {
-                    await showUserProfile(chatId, existingUser);
-                    return;
-                }
-            }
-
-            bot.sendMessage(chatId, '❌ Registration failed. Please try again later.');
         }
-    } else {
-        bot.sendMessage(chatId, '❌ Please share your own phone number for registration.');
+
+        const detail = error?.message ? `\n\nDetails: ${error.message}` : '';
+        bot.sendMessage(chatId, `❌ Registration failed. Please try again later.${detail}`);
     }
 });
 
@@ -1340,7 +1406,7 @@ Please use /start and share your phone number to create an account.
     const uid = userData.uid;
 
     const webMessage = `
-🌐 Play DireSelam Bingo on Web
+🌐 Play YG Bingo on Web
 
 Click the button below to play on our web platform:
 
@@ -1373,7 +1439,7 @@ bot.onText(/\/help/, (msg) => {
     const chatId = msg.chat.id;
 
     const helpMessage = `
-🤖 DireSelam Bingo Bot Help
+🤖 YG Bingo Bot Help
 
 Commands:
 • /start - Start the bot
@@ -1906,7 +1972,7 @@ Please enter the amount you want to withdraw (max: ${userData?.wallet || 0} Birr
 
         case 'back_to_main':
             const mainMessage = `
-🎰 DireSelam Bingo Bot
+🎰 YG Bingo Bot
 
 How can I help you today?
       `;
