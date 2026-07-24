@@ -98,8 +98,8 @@ const db = admin.firestore();
 const userStates = new Map();
 
 // Telebirr deposit configuration
-const TELEBIRR_TARGET_PHONE_LOCAL = '0913503182';
-const TELEBIRR_TARGET_NAME = 'Danha alemhu'; // Expected receiver name
+const TELEBIRR_TARGET_PHONE_LOCAL = '0941443794';
+const TELEBIRR_TARGET_NAME = 'Yonatan Abdulkadir'; // Expected receiver name
 function toInternationalPhone(localPhone) {
     const cleaned = localPhone.replace(/\D/g, '');
     if (cleaned.startsWith('0')) {
@@ -113,8 +113,9 @@ function toInternationalPhone(localPhone) {
 const TELEBIRR_TARGET_PHONE_INTL = toInternationalPhone(TELEBIRR_TARGET_PHONE_LOCAL);
 
 // CBE Birr deposit configuration
-const CBE_TARGET_PHONE_LOCAL = '0913503182';
+const CBE_TARGET_PHONE_LOCAL = '0941443794';
 const CBE_TARGET_PHONE_INTL = toInternationalPhone(CBE_TARGET_PHONE_LOCAL);
+const CBE_TARGET_NAME = 'Yonatan Abdulkadir'; // Expected receiver name
 
 function parseTelebirrReceipt(messageText) {
     const text = messageText || '';
@@ -797,13 +798,13 @@ function sendDepositInstructions(bot, chatId) {
 💳 Deposit via Telebirr
 
 1) Open Telebirr and send your desired amount to:
-• Name: Danha alemhu
+• Name: Yonatan Abdulkadir
 • Phone: ${TELEBIRR_TARGET_PHONE_LOCAL}
 
 2) After payment, copy the full Telebirr message and paste it here.
 
 Example message:
-"Dear Kaleb\nYou have transferred ETB 20.00 to Danha alemhu (2519****3152) on 11/08/2025 21:30:07. Your transaction number is CHB657ZKOA. ... To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CHB657ZKOA.\n\nThank you for using telebirr\nEthio telecom"
+"Dear Kaleb\nYou have transferred ETB 20.00 to Yonatan Abdulkadir (2519****3794) on 11/08/2025 21:30:07. Your transaction number is CHB657ZKOA. ... To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CHB657ZKOA.\n\nThank you for using telebirr\nEthio telecom"
 
 We will verify:
 • Correct destination phone number
@@ -825,7 +826,7 @@ function sendCBEDepositInstructions(bot, chatId) {
 💳 Deposit via CBE Birr
 
 1) Open CBE Birr app and send your desired amount to:
-• Name: Kaleb Birhan
+• Name: Yonatan Abdulkadir
 • Phone: ${CBE_TARGET_PHONE_LOCAL}
 
 2) After payment, copy the full CBE Birr message and paste it here.
@@ -2634,6 +2635,14 @@ Your request is now pending approval. You will be notified once it's processed.
                 return;
             }
 
+            // Check receiver name from the SMS text against our target account
+            console.log('[cbe-debug] checking SMS receiver name:', parsed.receiverName, 'against target:', CBE_TARGET_NAME);
+            if (!receiverNameMatchesTarget(parsed.receiverName, CBE_TARGET_NAME)) {
+                const balance = await getCurrentBalanceByTelegramId(userId);
+                bot.sendMessage(chatId, `The receiver name "${parsed.receiverName}" does not match the expected recipient "${CBE_TARGET_NAME}". Please ensure you sent to the correct person.\nYour current balance: ${balance} Birr`);
+                return;
+            }
+
             // Validate the receipt URL
             const receiptCheck = await validateCBEReceiptUrl(parsed.receiptUrl, parsed.amount, parsed.transactionNumber);
             console.log('[cbe-debug] CBE receipt check:', receiptCheck);
@@ -2642,6 +2651,13 @@ Your request is now pending approval. You will be notified once it's processed.
                 const balance = await getCurrentBalanceByTelegramId(userId);
                 const reason = receiptCheck.reason === 'data_mismatch' ? 'The receipt data does not match the transaction.' : 'Could not verify the receipt link.';
                 bot.sendMessage(chatId, `${reason} Please double check and try again.\nYour current balance: ${balance} Birr`);
+                return;
+            }
+
+            // Check receiver name extracted from the official PDF receipt, if available
+            if (receiptCheck.parsed && receiptCheck.parsed.receiver && !receiverNameMatchesTarget(receiptCheck.parsed.receiver, CBE_TARGET_NAME)) {
+                console.log('[cbe-debug] PDF receiver name mismatch:', receiptCheck.parsed.receiver, 'vs', CBE_TARGET_NAME);
+                bot.sendMessage(chatId, `❌ Deposit rejected: The receipt shows the money was sent to "${receiptCheck.parsed.receiver}" instead of "${CBE_TARGET_NAME}". Please ensure you sent to the correct recipient.`);
                 return;
             }
 

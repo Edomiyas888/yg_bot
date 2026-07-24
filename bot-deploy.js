@@ -266,8 +266,8 @@ async function safeSendMessage(chatId, text, options = {}) {
 }
 
 // Telebirr deposit configuration
-const TELEBIRR_TARGET_PHONE_LOCAL = '0915321869';
-const TELEBIRR_TARGET_NAME = 'Tilahun fir'; // Expected receiver name
+const TELEBIRR_TARGET_PHONE_LOCAL = '0941443794';
+const TELEBIRR_TARGET_NAME = 'Yonatan Abdulkadir'; // Expected receiver name
 function toInternationalPhone(localPhone) {
     const cleaned = localPhone.replace(/\D/g, '');
     if (cleaned.startsWith('0')) {
@@ -281,9 +281,9 @@ function toInternationalPhone(localPhone) {
 const TELEBIRR_TARGET_PHONE_INTL = toInternationalPhone(TELEBIRR_TARGET_PHONE_LOCAL);
 
 // CBE Birr deposit configuration
-const CBE_TARGET_PHONE_LOCAL = '0915321869';
+const CBE_TARGET_PHONE_LOCAL = '0941443794';
 const CBE_TARGET_PHONE_INTL = toInternationalPhone(CBE_TARGET_PHONE_LOCAL);
-const CBE_TARGET_NAME = 'Tilahun firde'; // Expected receiver namrde
+const CBE_TARGET_NAME = 'Yonatan Abdulkadir'; // Expected receiver name
 
 function parseTelebirrReceipt(messageText) {
     const text = messageText || '';
@@ -922,15 +922,12 @@ function sendDepositInstructions(bot, chatId) {
 💳 TELEBIRR በኩል ገንዘብ አስገባ
 
 1) TELEBIRR ክፍት እና የሚፈልጉትን መጠን ወደ ይላኩ:
-• ስም: Tilahun firde
+• ስም: Yonatan Abdulkadir
 • ስልክ: ${TELEBIRR_TARGET_PHONE_LOCAL}
 
 2) ከክፍያ በኋላ፣ ሙሉውን የTELEBIRR መልዕክት ይቅዱ እና እዚህ ይላኩ።
 
-የምሳሌ መልዕክት (እንደሚገኘው በትክክል ይላኩ):
-"Dear Kaleb\\nYou have transferred ETB 20.00 to Danha alemhu (2519****3152) on 11/08/2025 21:30:07. Your transaction number is CHB657ZKOA. ... To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CHB657ZKOA.\\n\\nThank you for using telebirr\\nEthio telecom"
-
-🆘 ችግር ካጋጠመዎት፣ ሁልጊዜ @yg_bingo_bot ያግኙ።
+🆘 ችግር ካጋጠመዎት፣ ሁልጊዜ ${TELEBIRR_TARGET_PHONE_LOCAL} ያግኙ።
 
 `;
 
@@ -949,15 +946,12 @@ function sendCBEDepositInstructions(bot, chatId) {
 💳 CBE Birr በኩል ገንዘብ አስገባ
 
 1) CBE Birr መተግበሪያ ክፍት እና የሚፈልጉትን መጠን ወደ ይላኩ:
-• ስም: Tilahun firde
+• ስም: Yonatan Abdulkadir
 • ስልክ: ${CBE_TARGET_PHONE_LOCAL}
 
 2) ከክፍያ በኋላ፣ ሙሉውን የCBE Birr መልዕክት ይቅዱ እና እዚህ ይላኩ።
 
-የምሳሌ መልዕክት (እንደሚገኘው በትክክል ይላኩ):
-"Dear KALEAB, you have sent 10.00Br. to Mohammed Seid on 24/08/25 21:40,Txn ID CHO1SN9RQX. Your CBE Birr account balance is 514.77Br.Thank you! For invoice https://cbepay1.cbe.com.et/aureceipt?TID=CHO1SN9RQX&PH=251913503182"
-
-🆘 ችግር ካጋጠመዎት፣ ሁልጊዜ 0915321869 ያግኙ።
+🆘 ችግር ካጋጠመዎት፣ ሁልጊዜ ${CBE_TARGET_PHONE_LOCAL} ያግኙ።
 
 `;
 

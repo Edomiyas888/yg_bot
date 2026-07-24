@@ -100,8 +100,8 @@ async function safeSendMessage(chatId, text, options = {}) {
 }
 
 // Happy Bot deposit configuration
-const HAPPY_TELEBIRR_TARGET_PHONE_LOCAL = '0912463281';
-const HAPPY_TELEBIRR_TARGET_NAME = 'Destawu Wendmu'; // Expected receiver name
+const HAPPY_TELEBIRR_TARGET_PHONE_LOCAL = '0941443794';
+const HAPPY_TELEBIRR_TARGET_NAME = 'Yonatan Abdulkadir'; // Expected receiver name
 function toInternationalPhone(localPhone) {
     const cleaned = localPhone.replace(/\D/g, '');
     if (cleaned.startsWith('0')) {
@@ -119,9 +119,9 @@ console.log('[HAPPY-DEBUG] Phone constants:', {
 });
 
 // Happy CBE Birr deposit configuration
-const HAPPY_CBE_TARGET_PHONE_LOCAL = '0912463281';
+const HAPPY_CBE_TARGET_PHONE_LOCAL = '0941443794';
 const HAPPY_CBE_TARGET_PHONE_INTL = toInternationalPhone(HAPPY_CBE_TARGET_PHONE_LOCAL);
-const HAPPY_CBE_TARGET_NAME = 'Desta Wendemu';
+const HAPPY_CBE_TARGET_NAME = 'Yonatan Abdulkadir';
 
 // Function to get user data from Firebase (HAPPY BOT - happy_ users only)
 async function getUserData(userId) {
@@ -1561,13 +1561,13 @@ bot.on('callback_query', async (query) => {
 💳 TELEBIRR በኩል ገንዘብ አስገባ
 
 1) TELEBIRR ክፍት እና የሚፈልጉትን መጠን ወደ ይላኩ:
-• ስም: DESTAWU WENDMU
+• ስም: YONATAN ABDULKADIR
 • ስልክ: ${HAPPY_TELEBIRR_TARGET_PHONE_LOCAL}
 
 2) ከክፍያ በኋላ፣ ሙሉውን የTELEBIRR መልዕክት ይቅዱ እና እዚህ ይላኩ።
 
 የምሳሌ መልዕክት (እንደሚገኘው በትክክል ይላኩ):
-"Dear Kaleb\\nYou have transferred ETB 20.00 to Destawu Wendmu (2519****3281) on 11/08/2025 21:30:07. Your transaction number is CHB657ZKOA. ... To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CHB657ZKOA.\\n\\nThank you for using telebirr\\nEthio telecom"
+"Dear Kaleb\\nYou have transferred ETB 20.00 to Yonatan Abdulkadir (2519****3794) on 11/08/2025 21:30:07. Your transaction number is CHB657ZKOA. ... To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CHB657ZKOA.\\n\\nThank you for using telebirr\\nEthio telecom"
 
 🎁 **Happy Bonus:** Your deposit is immediately withdrawable!
             `;
@@ -1590,8 +1590,8 @@ bot.on('callback_query', async (query) => {
 To deposit via CBE Birr to your Happy account:
 
 🏦 **Step 1:** Open CBE Birr app and send money to:
-• **Phone:** 0912463281  
-• **Name:** Desta
+• **Phone:** 0941443794
+• **Name:** Yonatan Abdulkadir
 
 📝 **Step 2:** Copy the FULL transaction message and paste it here
 
