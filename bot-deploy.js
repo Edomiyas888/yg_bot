@@ -266,8 +266,8 @@ async function safeSendMessage(chatId, text, options = {}) {
 }
 
 // Telebirr deposit configuration
-const TELEBIRR_TARGET_PHONE_LOCAL = '0941443794';
-const TELEBIRR_TARGET_NAME = 'Yonatan Abdulkadir'; // Expected receiver name
+const TELEBIRR_TARGET_PHONE_LOCAL = '0942242926';
+const TELEBIRR_TARGET_NAME = 'Biniam'; // Expected receiver name
 function toInternationalPhone(localPhone) {
     const cleaned = localPhone.replace(/\D/g, '');
     if (cleaned.startsWith('0')) {
@@ -922,7 +922,7 @@ function sendDepositInstructions(bot, chatId) {
 💳 TELEBIRR በኩል ገንዘብ አስገባ
 
 1) TELEBIRR ክፍት እና የሚፈልጉትን መጠን ወደ ይላኩ:
-• ስም: Yonatan Abdulkadir
+• ስም: Biniam
 • ስልክ: ${TELEBIRR_TARGET_PHONE_LOCAL}
 
 2) ከክፍያ በኋላ፣ ሙሉውን የTELEBIRR መልዕክት ይቅዱ እና እዚህ ይላኩ።
