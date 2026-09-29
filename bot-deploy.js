@@ -123,7 +123,7 @@ function loadServiceAccount() {
     });
 }
 
-const BUILD_MARKER = 'yg-bot-biniam-telebirr-v4';
+const BUILD_MARKER = 'yg-bot-belay-telebirr-v5';
 console.log(`🚀 BOOT ${BUILD_MARKER}`);
 console.log('🔐 Env flags:', {
     hasB64: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_B64),
@@ -267,7 +267,7 @@ async function safeSendMessage(chatId, text, options = {}) {
 
 // Telebirr deposit configuration
 const TELEBIRR_TARGET_PHONE_LOCAL = '0942242926';
-const TELEBIRR_TARGET_NAME = 'Biniam'; // Expected receiver name
+const TELEBIRR_TARGET_NAME = 'Belay'; // Expected receiver name
 function toInternationalPhone(localPhone) {
     const cleaned = localPhone.replace(/\D/g, '');
     if (cleaned.startsWith('0')) {
@@ -922,7 +922,7 @@ function sendDepositInstructions(bot, chatId) {
 💳 TELEBIRR በኩል ገንዘብ አስገባ
 
 1) TELEBIRR ክፍት እና የሚፈልጉትን መጠን ወደ ይላኩ:
-• ስም: Biniam
+• ስም: Belay
 • ስልክ: ${TELEBIRR_TARGET_PHONE_LOCAL}
 
 2) ከክፍያ በኋላ፣ ሙሉውን የTELEBIRR መልዕክት ይቅዱ እና እዚህ ይላኩ።
