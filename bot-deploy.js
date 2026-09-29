@@ -123,7 +123,7 @@ function loadServiceAccount() {
     });
 }
 
-const BUILD_MARKER = 'yg-bot-firebase-b64-v3';
+const BUILD_MARKER = 'yg-bot-biniam-telebirr-v4';
 console.log(`🚀 BOOT ${BUILD_MARKER}`);
 console.log('🔐 Env flags:', {
     hasB64: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_B64),
